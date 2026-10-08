@@ -64,7 +64,7 @@
 
 <script>
     // [최종 결합] 사장님이 마지막으로 뽑으신 진짜 구글 API 배포 주소입니다.
-    const GOOGLE_SERVER_URL = "https://google.com";
+    const GOOGLE_SERVER_URL = https://script.google.com/macros/s/AKfycbyaTRQZwqNPnVtRULQ8Q7w0E4e3ru-gwmBkWZk-kQF0-oivnndaB5He4fY6mfiRkixv/exec;
 
     document.getElementById('issueDate').value = new Date().toISOString().substring(0, 10);
 
@@ -160,26 +160,26 @@
 
         fetch(GOOGLE_SERVER_URL, {
             method: "POST",
-            mode: "no-cors",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "text/plain;charset=utf-8" }, // ⬅️ 여기를 이렇게 바꿔줘!
             body: JSON.stringify(record)
-        }).then(() => {
-            alert('지급 증빙 서명이 사장님 구글 엑셀로 실시간 전송 완료되었습니다!');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            document.getElementById('teamLeader').value = '';
-            document.getElementById('workerName').value = '';
-            document.getElementById('items').value = '';
-            
-            submitBtn.disabled = false;
-            submitBtn.style.background = "var(--primary)";
-            loadingText.style.display = "none";
-        }).catch(err => {
-            alert('전송 오류 발생!');
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.result === "success") {
+                alert('지급 증빙 서명이 구글 엑셀로 전송 완료되었습니다!');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                document.getElementById('teamLeader').value = '';
+                document.getElementById('workerName').value = '';
+                document.getElementById('items').value = '';
+            } else {
+                alert('에러 발생: ' + data.error);
+            }
+        })
+        .catch(err => {
+            alert('전송 중 오류 발생!');
+        })
+        .finally(() => {
             submitBtn.disabled = false;
             submitBtn.style.background = "var(--primary)";
             loadingText.style.display = "none";
         });
-    });
-</script>
-</body>
-</html>
