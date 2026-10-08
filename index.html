@@ -150,8 +150,8 @@
         const submitBtn = document.getElementById('submitBtn');
         const loadingText = document.getElementById('loadingText');
 
-        // 서명 이미지 Base64 인코딩 데이터
-        const signatureData = canvas.toDataURL('image/png');
+// PNG 대신 JPEG(품질 0.5)로 변경하여 용량을 1/10로 축소 (시트 글자수 제한 방지)
+        const signatureData = canvas.toDataURL('image/jpeg', 0.5);
 
         const formData = {
             issueDate: document.getElementById('issueDate').value,
