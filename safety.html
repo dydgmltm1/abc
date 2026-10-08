@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>영전 안전보건 소모품 지급대장</title>
+    <style>
+        :root { --primary: #007bff; --success: #28a745; --dark: #343a40; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f4f6f9; margin: 0; padding: 15px; color: var(--dark); }
+        .container { max-width: 600px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h2 { text-align: center; margin-top: 0; color: #111; font-size: 22px; border-bottom: 2px solid var(--primary); padding-bottom: 10px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 6px; font-size: 14px; }
+        input[type="text"], input[type="date"], select { width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 6px; box-sizing: border-box; font-size: 15px; }
+        .signature-container { border: 1px dashed #6c757d; background: #fafafa; border-radius: 6px; position: relative; margin-top: 5px; }
+        canvas { width: 100%; height: 150px; display: block; cursor: crosshair; }
+        .btn-clear { background: #6c757d; color: white; border: none; padding: 6px 12px; font-size: 12px; border-radius: 4px; cursor: pointer; position: absolute; top: 5px; right: 5px; }
+        .btn-submit { width: 100%; background: var(--primary); color: white; border: none; padding: 14px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-top: 10px; transition: background 0.2s; }
+        .btn-submit:hover { background: #0056b3; }
+        .admin-section { margin-top: 40px; border-top: 2px dashed #ccc; padding-top: 20px; }
+        .admin-title { font-size: 16px; font-weight: bold; color: #dc3545; cursor: pointer; display: inline-block; margin-bottom: 10px; }
+        .admin-content { display: none; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+        th, td { border: 1px solid #dee2e6; padding: 8px; text-align: left; }
+        th { background: #e9ecef; }
+        .btn-excel { background: var(--success); color: white; border: none; padding: 10px 15px; font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-bottom: 15px; }
+        .sig-img { max-height: 40px; background: #eee; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>소모성 보호구 수시 지급대장</h2>
+    <form id="safetyForm">
+        <div class="form-group">
+            <label>지급일자</label>
+            <input type="date" id="issueDate" required>
+        </div>
+        <div class="form-group">
+            <label>소속 회사</label>
+            <select id="company" required>
+                <option value="영전하이테크">영전하이테크</option>
+                <option value="영전엔지니어링">영전엔지니어링</option>
+                <option value="기타">기타 (직접 입력)</option>
+            </select>
+            <input type="text" id="companyEtc" placeholder="회사명 직접 입력" style="display:none; margin-top:5px;">
+        </div>
+        <div class="form-group">
+            <label>소속 팀장이름</label>
+            <input type="text" id="teamLeader" placeholder="예: 홍길동" required>
+        </div>
+        <div class="form-group">
+            <label>근로자 성명</label>
+            <input type="text" id="workerName" placeholder="예: 김철수" required>
+        </div>
+        <div class="form-group">
+            <label>수령 보호구 품목 (상세 규격 및 수량)</label>
+            <input type="text" id="items" placeholder="예: 자상방지장갑 1켤레, 방진마스크 3개" required>
+        </div>
+        <div class="form-group">
+            <label>근로자 자필 서명 (손가락 또는 펜으로 사인)</label>
+            <div class="signature-container">
+                <canvas id="sigCanvas"></canvas>
+                <button type="button" class="btn-clear" id="btnClear">지우기</button>
+            </div>
+        </div>
+        <button type="submit" class="btn-submit">지급 완료 제출</button>
+    </form>
+
+    <!-- 관리자 전용 데이터 확인 창 -->
+    <div class="admin-section">
+        <div class="admin-title" onclick="toggleAdmin()">⚙️ [안전관리자 전용] 데이터 및 엑셀 다운로드 (클릭)</div>
+        <div class="admin-content" id="adminContent">
+            <button type="button" class="btn-excel" onclick="downloadCSV()">📊 산안비 정산용 엑셀(CSV) 다운로드</button>
+            <table>
+                <thead>
+                    <tr>
+                        <th>일자</th>
+                        <th>소속</th>
+                        <th>팀장</th>
+                        <th>성명</th>
+                        <th>품목</th>
+                        <th>서명</th>
+                    </tr>
+                </thead>
+                <tbody id="dataTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 오늘 날짜 기본 세팅
+    document.getElementById('issueDate').value = new Date().toISOString().substring(0, 10);
+
+    // 회사 선택 컨트롤
+    const companySelect = document.getElementById('company');
+    const companyEtc = document.getElementById('companyEtc');
+    companySelect.addEventListener('change', function() {
+        companyEtc.style.display = this.value === '기타' ? 'block' : 'none';
+    });
+
+    // 서명 패드 (Canvas) 설정
+    const canvas = document.getElementById('sigCanvas');
+    const ctx = canvas.getContext('2d');
+    let isDrawing = false;
+
+    function resizeCanvas() {
+        const ratio = Math.max(window.devicePixelRatio || 1, 1);
+        canvas.width = canvas.offsetWidth * ratio;
+        canvas.height = canvas.offsetHeight * ratio;
+        ctx.scale(ratio, ratio);
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = "round";
+        ctx.strokeStyle = "#000";
+    }
+    window.addEventListener('resize', resizeCanvas);
+    setTimeout(resizeCanvas, 100);
+
+    function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return { x: clientX - rect.left, y: clientY - rect.top };
+    }
+    function startDraw(e) { isDrawing = true; const pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); e.preventDefault(); }
+    function draw(e) { if(!isDrawing) return; const pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); e.preventDefault(); }
+    function endDraw() { isDrawing = false; }
+
+    canvas.addEventListener('mousedown', startDraw);
+    canvas.addEventListener('mousemove', draw);
+    window.addEventListener('mouseup', endDraw);
+    canvas.addEventListener('touchstart', startDraw, {passive: false});
+    canvas.addEventListener('touchmove', draw, {passive: false});
+    window.addEventListener('touchend', endDraw);
+
+    document.getElementById('btnClear').addEventListener('click', () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    });
+
+    // 데이터 저장 및 테이블 불러오기
+    function loadData() {
+        const data = JSON.parse(localStorage.getItem('safetyRecords') || '[]');
+        const tbody = document.getElementById('dataTableBody');
+        tbody.innerHTML = '';
+        data.forEach(r => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${r.date}</td><td>${r.company}</td><td>${r.leader}</td><td>${r.name}</td><td>${r.items}</td><td><img class="sig-img" src="${r.sig}"></td>`;
+            tbody.appendChild(tr);
+        });
+    }
+
+    document.getElementById('safetyForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // 빈 사인 방지 체크
+        const blank = document.createElement('canvas');
+        blank.width = canvas.width; blank.height = canvas.height;
+        if(canvas.toDataURL() === blank.toDataURL()) {
+            alert('근로자 자필 서명이 누락되었습니다. 사인을 그려주세요.');
+            return;
+        }
+
+        const compValue = companySelect.value === '기타' ? companyEtc.value.trim() : companySelect.value;
+        
+        // 띄어쓰기 가공 (사장님 요청사항 적용)
+        const record = {
+            date: document.getElementById('issueDate').value,
+            company: compValue,
+            leader: document.getElementById('teamLeader').value.replace(/\s+/g, ''),
+            name: document.getElementById('workerName').value.replace(/\s+/g, ''),
+            items: document.getElementById('items').value.trim(),
+            sig: canvas.toDataURL()
+        };
+
+        const data = JSON.parse(localStorage.getItem('safetyRecords') || '[]');
+        data.push(record);
+        localStorage.setItem('safetyRecords', JSON.stringify(data));
+
+        alert('지급 증빙이 성공적으로 제출되었습니다.');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        document.getElementById('teamLeader').value = '';
+        document.getElementById('workerName').value = '';
+        document.getElementById('items').value = '';
+        loadData();
+    });
+
+    function toggleAdmin() {
+        const content = document.getElementById('adminContent');
+        content.style.display = content.style.display === 'block' ? 'none' : 'block';
+        if(content.style.display === 'block') loadData();
+    }
+
+    function downloadCSV() {
+        const data = JSON.parse(localStorage.getItem('safetyRecords') || '[]');
+        if(data.length === 0) { alert('다운로드할 데이터가 없습니다.'); return; }
+        
+        let csv = '\uFEFF일자,소속,팀장이름,근로자성명,수령품목\n';
+        data.forEach(r => {
+            csv += `"${r.date}","${r.company}","${r.leader}","${r.name}","${r.items}"\n`;
+        });
+        
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.setAttribute('download', `산안비_지급대장_정산용_${new Date().toISOString().substring(0,10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+</script>
+</body>
+</html>
