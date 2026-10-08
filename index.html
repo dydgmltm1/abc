@@ -17,6 +17,7 @@
         .btn-clear { background: #6c757d; color: white; border: none; padding: 6px 12px; font-size: 12px; border-radius: 4px; cursor: pointer; position: absolute; top: 5px; right: 5px; z-index: 10; }
         .btn-submit { width: 100%; background: var(--primary); color: white; border: none; padding: 14px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-top: 10px; transition: background 0.2s; }
         .btn-submit:hover { background: #0056b3; }
+        .btn-submit:disabled { background: #cccccc; cursor: not-allowed; }
         .loading { display: none; text-align: center; font-weight: bold; color: var(--primary); margin-top: 10px; font-size: 15px; }
     </style>
 </head>
@@ -136,6 +137,7 @@
         hasSigned = false;
     });
 
+    // 폼 제출 이벤트 처리
     document.getElementById('safetyForm').addEventListener('submit', function(e) {
         e.preventDefault();
         
@@ -146,4 +148,49 @@
 
         const compValue = companySelect.value === '기타' ? companyEtc.value.trim() : companySelect.value;
         const submitBtn = document.getElementById('submitBtn');
-        const
+        const loadingText = document.getElementById('loadingText');
+
+        // 서명 이미지 Base64 인코딩 데이터
+        const signatureData = canvas.toDataURL('image/png');
+
+        const formData = {
+            issueDate: document.getElementById('issueDate').value,
+            company: compValue,
+            teamLeader: document.getElementById('teamLeader').value,
+            workerName: document.getElementById('workerName').value,
+            items: document.getElementById('items').value,
+            signature: signatureData
+        };
+
+        // 버튼 비활성화 및 로딩 표시
+        submitBtn.disabled = true;
+        loadingText.style.display = 'block';
+
+        // 구글 앱스 스크립트로 데이터 전송
+        fetch(GOOGLE_SERVER_URL, {
+            method: 'POST',
+            mode: 'no-cors', // 구글 앱스 스크립트 우회 설정
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        })
+        .then(() => {
+            alert('지급 내역이 구글 엑셀 창고로 정상 제출되었습니다.');
+            // 폼 및 서명 초기화
+            document.getElementById('safetyForm').reset();
+            document.getElementById('issueDate').value = new Date().toISOString().substring(0, 10);
+            companyEtc.style.display = 'none';
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            hasSigned = false;
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('전송 중 오류가 발생했습니다. 다시 시도해주세요.');
+        })
+        .finally(() => {
+            submitBtn.disabled = false;
+            loadingText.style.display = 'none';
+        });
+    });
+</script>
+</body>
+</html>
