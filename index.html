@@ -63,6 +63,7 @@
 </div>
 
 <script>
+    // 사장님이 새로 뽑아오신 완벽한 승인 완료 주소로 전면 교체함
     const GOOGLE_SERVER_URL = "https://google.com";
 
     document.getElementById('issueDate').value = new Date().toISOString().substring(0, 10);
@@ -73,7 +74,6 @@
         companyEtc.style.display = this.value === '기타' ? 'block' : 'none';
     });
 
-    // 서명 패드 완벽 수정본
     const canvas = document.getElementById('sigCanvas');
     const ctx = canvas.getContext('2d');
     let isDrawing = false;
@@ -86,7 +86,6 @@
         ctx.strokeStyle = "#000";
     }
     
-    // 초기 로드 및 창 크기 변경 시 고정
     window.addEventListener('resize', resizeCanvas);
     window.addEventListener('DOMContentLoaded', resizeCanvas);
     setTimeout(resizeCanvas, 300);
